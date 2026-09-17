@@ -13,5 +13,6 @@ written down, replayable from the files.
 | # | Walkthrough | One line |
 |---|---|---|
 | 01 | [inspect-eval](01-inspect-eval/WALKTHROUGH.md) | An Inspect eval for unearned success claims; scorer mutation-proven falsifiable |
+| 02 | [nojs-lead-loss](02-nojs-lead-loss/WALKTHROUGH.md) | A silent money-path defect: found by probe, fixed by progressive enhancement, proven by re-running the reproduction |
 
 Isaac Teague Frayling - [pantheonlabs.co.uk](https://pantheonlabs.co.uk) - [evidence record](https://pantheonlabs.co.uk/evidence.html)

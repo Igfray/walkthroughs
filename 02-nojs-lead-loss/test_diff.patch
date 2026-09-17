@@ -1,0 +1,92 @@
+commit d05179c5bacca07193994d6b331418b0ce420f06
+Author: igfray <isaactf3349@gmail.com>
+Date:   Wed Sep 16 17:48:49 2026 +0000
+
+    fix(site): a no-JS enquiry submit now lands the lead instead of losing it
+    
+    The enquire form had no method or action. With scripts absent or failed, submit
+    did the browser default: a GET back onto the same page - the lead in the query string, nobody told, nothing captured.
+    
+    The form now POSTs to /site-enquiry (token in a hidden field, HMAC-verified),
+    reusing chat_enquiry: same validation, dedupe, durable outbox as the JSON path.
+    The inline script still preventDefaults where it runs. python-multipart added:
+    the round-trip test 500d without it.
+    
+    4 new tests incl. a TestClient round trip; browser-proven: the original no-JS
+    reproduction now POSTs and lands on Enquiry sent. 2,102 tests.
+
+diff --git a/apps/gateway/tests/test_enquiry_nojs.py b/apps/gateway/tests/test_enquiry_nojs.py
+new file mode 100644
+index 0000000..6784b9d
+--- /dev/null
++++ b/apps/gateway/tests/test_enquiry_nojs.py
+@@ -0,0 +1,69 @@
++"""A no-JS enquiry submit must capture the lead, not bounce it into the query string.
++
++Measured 2026-09-16: the enquire form had no method/action, so with scripts absent
++or failed the browser default GET reloaded the page with the lead's data in the
++URL. The visitor believed they had enquired; no lead existed anywhere. [audit R9]
++"""
++import re
++
++import pytest
++
++
++def _enquire_html():
++    import sys
++    sys.path.insert(0, "apps/gateway/tests")
++    import test_site_snapshot as snap
++    kw = next(k for n, k in snap._SCENARIOS if n == "concierge_enquire_builtin")
++    return snap.render_site(**kw)
++
++
++def test_form_posts_somewhere_real_without_js():
++    html = _enquire_html()
++    m = re.search(r"<form class='enquire-form'([^>]*)>", html)
++    assert m, "enquire form missing"
++    attrs = m.group(1)
++    assert "method='post'" in attrs, f"no method: a no-JS submit GETs the lead into the URL. attrs={attrs!r}"
++    assert "action='" in attrs, f"no action: a no-JS submit reloads the page. attrs={attrs!r}"
++
++
++def test_form_route_exists_and_accepts_form_encoding():
++    from gateway.routes.site import router
++    paths = {getattr(r, "path", "") for r in router.routes}
++    assert any("enquiry" in p for p in paths), f"no form-post enquiry route on the site router: {sorted(paths)}"
++
++
++def test_js_enhancement_prevents_default():
++    html = _enquire_html()
++    assert "preventDefault" in html, "the JS path must intercept submit, or every JS visitor gets the full-page POST"
++
++
++def test_form_post_round_trip(monkeypatch):
++    from fastapi.testclient import TestClient
++    from gateway.main import app
++    client = TestClient(app)
++    from gateway.middleware import auth as _auth
++    monkeypatch.setattr(_auth, "_verify_hmac", lambda t: "t-test" if t == "tok" else None)
++    # bad token -> 403, no capture
++    r = client.post("/site-enquiry", data={"t": "bad", "email": "a@b.co"})
++    assert r.status_code == 403
++    # invalid email -> 422 via the REAL route's validation (which raises before any DB work)
++    r = client.post("/site-enquiry", data={"t": "tok", "name": "Ann", "email": "not-an-email"})
++    assert r.status_code == 422 and "back" in r.text.lower()
++    # captured leads go through the SAME path as the JSON route; stub the durable bits
++    import gateway.routes.chat as chat_mod
++    calls = {}
++
++    async def fake_chat_enquiry(body, tenant_id):
++        calls["tenant"] = tenant_id
++        calls["email"] = body.email
++        calls["message"] = body.message
++        return {"ok": True, "enqueued": True, "duplicate": False}
++
++    import gateway.routes.site as site_mod
++    monkeypatch.setattr(chat_mod, "chat_enquiry", fake_chat_enquiry)
++    r = client.post("/site-enquiry", data={"t": "tok", "name": "Ann", "email": "ann@example.com",
++                                           "arrival": "2026-10-01", "departure": "2026-10-04", "party": "2"})
++    assert r.status_code == 200, r.text
++    assert "Enquiry sent" in r.text
++    assert calls["tenant"] == "t-test" and calls["email"] == "ann@example.com"
++    assert "2026-10-01" in calls["message"] and "2 guest" in calls["message"]

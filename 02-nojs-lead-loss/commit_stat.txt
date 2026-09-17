@@ -1,0 +1,8 @@
+ apps/gateway/src/gateway/site.py                   | 10 +++-
+ .../fixtures/site/concierge_enquire_builtin.html   |  2 +-
+ .../fixtures/site/concierge_enquire_photos.html    |  2 +-
+ .../fixtures/site/concierge_enquire_rates.html     |  2 +-
+ .../site/concierge_enquire_why_direct.html         |  2 +-
+ apps/gateway/tests/test_enquiry_nojs.py            | 69 ++++++++++++++++++++++
+ uv.lock                                            | 11 ++++
+ 9 files changed, 128 insertions(+), 6 deletions(-)
