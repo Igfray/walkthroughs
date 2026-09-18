@@ -134,3 +134,38 @@ each was silently disarmed one call up the stack.
 The generalisation, now in my notes: *test the seam, not the component.* And
 prefer one test that follows a request through its whole life over another
 test of a part that already has one.
+
+## 8. After the walkthrough: closing R2 properly
+
+This document originally ended with R2 declared PARTLY closed — the silent
+ok=False was fixed, the gap underneath it was not. That gap is now closed too
+(commit 8d31b17), and the honest scope is worth recording.
+
+Migration 0069 adds component_settlement: the obligation is recorded BEFORE
+the provider credit is attempted, marked settled after, and a reaper sweeps
+unsettled rows in the maintenance loop — closing those whose credit actually
+landed (marker lost) and reporting real debts with the ids to replay them.
+
+The reaper deliberately never auto-credits. Minting credits from a sweep is
+how a reconciler becomes a money bug; one of the four mutations proves a test
+fails if it ever starts.
+
+Two things I did NOT get to decide:
+
+- The repo has a fail-open lint for containment paths. My new code returned
+  None from an except handler without a reviewed justification, and the lint
+  refused the diff. The fix was to justify it in one line (a lost audit row,
+  never an unauthorised payment) — which is exactly what the guard asks for.
+- Two test doubles still implemented the old earn() signature. That is a real
+  compatibility break I would otherwise have shipped to every other Meter.
+
+And what is still NOT true: the settlement is not atomic. The agent run sits
+between the debit and the credit, so the three operations cannot share a
+transaction. An unfulfilled settlement is now findable and replayable instead
+of invisible. That is a smaller promise than "atomic", and it is the one the
+architecture can actually keep.
+
+The grant was verified on the live database rather than trusted from my own
+docstring — SELECT t, INSERT/UPDATE/DELETE f — because migration 0067 exists
+precisely because a schema once claimed append-only while its grants said
+otherwise. A comment is not a guarantee; only the grant is.
