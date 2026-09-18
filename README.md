@@ -14,5 +14,6 @@ written down, replayable from the files.
 |---|---|---|
 | 01 | [inspect-eval](01-inspect-eval/WALKTHROUGH.md) | An Inspect eval for unearned success claims; scorer mutation-proven falsifiable |
 | 02 | [nojs-lead-loss](02-nojs-lead-loss/WALKTHROUGH.md) | A silent money-path defect: found by probe, fixed by progressive enhancement, proven by re-running the reproduction |
+| 03 | [external-review](03-external-review/WALKTHROUGH.md) | Three seam defects reported by an outside reviewer: verified at source, fixed, mutation-proven — including the new test that caught itself being decorative |
 
 Isaac Teague Frayling - [pantheonlabs.co.uk](https://pantheonlabs.co.uk) - [evidence record](https://pantheonlabs.co.uk/evidence.html)
